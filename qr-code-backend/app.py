@@ -34,7 +34,7 @@ def update_scans():
 @app.route('/generate_qr', methods=['GET'])
 def generate_qr():
     # Gerar um QR Code com uma URL específica
-    url = "http://<YOUR_DOMAIN>/scan"
+    url = "http://qr-code-backend1.vercel.app/scan"  # Atualizado com seu domínio
     qr = qrcode.make(url)
     qr_path = "qr_code.png"
     qr.save(qr_path)
