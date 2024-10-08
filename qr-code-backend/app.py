@@ -1,27 +1,56 @@
-from flask import Flask, jsonify
+from flask import Flask, request, jsonify
+import qrcode
+import os
+import json
 
 app = Flask(__name__)
 
-# Dicionário para armazenar o número de escaneamentos por QR Code
-qr_code_scans = {
-    "qr_code_id": 10  # QR Code começa com 10 pontos
-}
+# Local para armazenar os dados de escaneamento
+DATA_FILE = "data.json"
 
-@app.route('/scanner/<qr_code_id>', methods=['GET'])
-def scan_qr_code(qr_code_id):
-    # Verifica se o QR Code existe
-    if qr_code_id not in qr_code_scans:
-        return jsonify({"message": "QR Code inválido!"}), 404
+# Função para inicializar os dados
+def initialize_data():
+    if not os.path.exists(DATA_FILE):
+        data = {
+            "scans": 0,
+            "max_scans": 10
+        }
+        with open(DATA_FILE, 'w') as f:
+            json.dump(data, f)
+
+# Função para atualizar o número de escaneamentos
+def update_scans():
+    with open(DATA_FILE, 'r') as f:
+        data = json.load(f)
+
+    if data["scans"] < data["max_scans"]:
+        data["scans"] += 1
+        with open(DATA_FILE, 'w') as f:
+            json.dump(data, f)
+        return True
+    return False
+
+# Rota para gerar o QR Code
+@app.route('/generate_qr', methods=['GET'])
+def generate_qr():
+    # Gerar um QR Code com uma URL específica
+    url = "http://<YOUR_DOMAIN>/scan"
+    qr = qrcode.make(url)
+    qr_path = "qr_code.png"
+    qr.save(qr_path)
     
-    # Verifica se o QR Code já foi escaneado 10 vezes
-    if qr_code_scans[qr_code_id] <= 0:
-        return jsonify({"message": "Limite de escaneamentos atingido!"}), 403
-    
-    # Reduz 1 ponto
-    qr_code_scans[qr_code_id] -= 1
-    return jsonify({"message": "QR Code escaneado com sucesso!", "pontos_restantes": qr_code_scans[qr_code_id]}), 200
+    return jsonify({"message": "QR Code generated!", "qr_code_url": qr_path}), 200
+
+# Rota para escanear o QR Code
+@app.route('/scan', methods=['GET'])
+def scan():
+    initialize_data()
+    if update_scans():
+        with open(DATA_FILE, 'r') as f:
+            data = json.load(f)
+        return jsonify({"message": "Scan successful!", "remaining_scans": data["max_scans"] - data["scans"]}), 200
+    else:
+        return jsonify({"message": "Max scans reached!"}), 400
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-print ("menos 1 gole")
